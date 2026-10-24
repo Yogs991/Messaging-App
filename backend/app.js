@@ -5,7 +5,7 @@ const app = express();
 
 const userRouter = require("./routes/userRouter");
 const messageRouter = require("./routes/messageRouter");
-const conversationRouter = require("./routes/conversationRouter");
+const chatRouter = require("./routes/chatRouter");
 
 app.use(cors(
     {
@@ -23,7 +23,7 @@ app.use(express.urlencoded({extended: true}));
 
 app.use("/api/user", userRouter);
 app.use("/api/message", messageRouter);
-app.use("/api/conversation", conversationRouter);
+app.use("/api/chat", chatRouter);
 
 const PORT = process.env.PORT || 3000;
 
