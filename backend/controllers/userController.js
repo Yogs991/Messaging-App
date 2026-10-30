@@ -7,9 +7,9 @@ async function getMe(req, res){
     res.json(req.user);
 }
 
-async function createUser(req, res){
+async function createUser(req, res, next){
     try {
-        const {username, email, password} = req.body;
+        const {username, email, password, displayName} = req.body;
         if(!email || !username || !password){
             return res.status(400).json({message: "Userame, email, password are required "});
         }
@@ -28,7 +28,8 @@ async function createUser(req, res){
             data:{
                 username,
                 email,
-                password: hashedPassword
+                password: hashedPassword,
+                displayName: displayName
             }
         });
 
@@ -42,12 +43,11 @@ async function createUser(req, res){
             }
         });
     } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: 'Internal server error' });
+        next(error);
     }
 }
 
-async function loginUser(req,res){
+async function loginUser(req, res, next){
     try {
         const {email, password} = req.body;
 
@@ -62,7 +62,8 @@ async function loginUser(req,res){
                 id: true,
                 username: true,
                 email:true,
-                password: true
+                password: true,
+                displayName: true
             }
         });
 
@@ -89,16 +90,16 @@ async function loginUser(req,res){
             user:{
                 id: user.id,
                 username: user.username,
-                emai: user.email
+                emai: user.email,
+                displayName: user.displayName
             }
         })
     } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: 'Internal server error' });
+        next(error);
     }
 }
 
-async function searchUsers(req, res){
+async function searchUsers(req, res, next){
     try {
         const {search, limit} = req.query;
         if(!search || typeof search !== "string"){
@@ -117,10 +118,20 @@ async function searchUsers(req, res){
             where:{
                 AND: [
                     {
-                        username:{
-                            contains: query,
-                            mode: "insensitive"
+                        OR:[
+                        {
+                            username:{
+                                contains: query,
+                                mode: "insensitive"
+                                },
                         },
+                        {
+                            displayName:{
+                                contains: query,
+                                mode: "insensitive",
+                            }
+                        },
+                        ]
                     },
                     {
                         NOT: {
@@ -133,17 +144,18 @@ async function searchUsers(req, res){
             select:{
                 id: true,
                 username: true,
+                displayName: true,
+                avatarUrl: true,
             },
         });
 
         return res.json(users);
     } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: 'Internal server error' });
+        next(error);
     }
 }
 
-async function getProfile(req, res){
+async function getProfile(req, res, next){
     try{
         const {id} = req.params;
         const user = await prisma.user.findUnique({
@@ -151,21 +163,43 @@ async function getProfile(req, res){
             select: {
                 id: true,
                 username: true,
+                displayName: true,
+                avatarUrl: true,
+                createdAt: true,
             }
         });
         return res.json(user);
     }catch(error){
-        console.log(error);
-        res.status(500).json({ message: 'Internal server error' });
+        next(error);
     }
 }
 
-//Add later avatar url images display names? and update function?
+async function updateUser(req, res, next){
+    try {
+        const allowedFields = ["displayName", "avatarUrl"];
+
+        const filteredData = Object.fromEntries(
+            Object.entries(req.body).filter(([key])=>
+                allowedFields.includes(key)
+            )
+        );
+
+        const updatedUser = await prisma.user.update({
+            where: {id: req.user.id},
+            data: filteredData,
+        });
+
+        return res.json(updatedUser);
+    } catch (error) {
+        next(error);
+    }
+}
 
 module.exports = {
     getMe,
     createUser,
     loginUser,
     searchUsers,
-    getProfile
+    getProfile,
+    updateUser
 }
